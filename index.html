@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fff6dd">
+<title>Clock Time – learn to tell the time</title>
+<style>
+:root{--bg:#fff6dd;--ink:#2b2d42;--hour:#2f6fed;--min:#f26a1b;--good:#2bb673;--bad:#e5484d;--card:#fff;--line:#eadfc2;--accent:#7c5cff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;overflow:hidden;-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;font-size:19px;line-height:1.3}
+#app{max-width:560px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;overflow-y:auto;padding:calc(env(safe-area-inset-top) + 8px) calc(env(safe-area-inset-right) + 14px) calc(env(safe-area-inset-bottom) + 10px) calc(env(safe-area-inset-left) + 14px)}
+#app>*{flex-shrink:0}
+#app>.stage{flex-shrink:1}
+h1{font-size:24px;margin:0}
+h2{font-size:16px;margin:8px 0 4px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
+.pill{background:#fff;border:2px solid var(--line);border-radius:99px;padding:3px 12px;font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:72%}
+b.h{color:var(--hour)}b.m{color:var(--min)}
+button{font:inherit;color:inherit;cursor:pointer}
+.btn{min-height:52px;padding:6px 14px;border-radius:16px;border:0;border-bottom:5px solid #4a35c9;background:var(--accent);color:#fff;font-weight:800;font-size:20px;touch-action:manipulation}
+.btn:active{transform:translateY(3px);border-bottom-width:2px}
+.btn.ghost{background:#fff;color:var(--ink);border:2px solid var(--line);border-bottom:5px solid var(--line)}
+.btn:disabled{opacity:.45;cursor:default}
+.back{background:none;border:0;font-weight:700;font-size:17px;padding:6px 4px;color:#5b5f77}
+.row{display:flex;gap:8px;margin-top:8px;justify-content:center}
+.row>*{flex:1}
+.row>.sq{flex:0 0 auto;min-width:56px}
+.row.wrap{flex-wrap:wrap}
+/* home */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.card{position:relative;text-align:left;background:var(--card);border:2px solid var(--line);border-bottom:4px solid var(--line);border-radius:16px;padding:4px 6px 4px 42px;min-height:54px}
+.card:active{transform:translateY(2px)}
+.card .num{position:absolute;left:6px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;font-weight:800;display:grid;place-items:center;font-size:17px}
+.card .num.fun{background:var(--good)}
+.card .ttl{display:block;font-weight:800;font-size:14px;line-height:1.1}
+.card .stars{display:block;font-size:12px;line-height:1.2;color:#f5a623;letter-spacing:1px}
+/* stage + clock */
+.stage{flex:1 1 0;min-height:0;display:flex;flex-direction:column;align-items:center;width:100%}
+.cw{flex:1 1 0;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+.clock{width:240px;height:240px;display:block;flex:none;user-select:none;-webkit-user-select:none}
+.clock.drag{cursor:grab;touch-action:none}
+.face{fill:#fff;stroke:var(--ink);stroke-width:5}
+.tk{stroke:#9a9db0;stroke-width:1}
+.tkM{stroke:var(--ink);stroke-width:2.5}
+.num{font:800 19px "Trebuchet MS",system-ui,sans-serif;text-anchor:middle;fill:var(--ink)}
+.mn{display:none}.showmn .mn{display:block}
+.mnum{font:700 9.5px "Trebuchet MS",system-ui,sans-serif;text-anchor:middle;fill:var(--min)}
+.hand line{stroke-linecap:round}
+.hh line{stroke:var(--hour);stroke-width:9}
+.mh line{stroke:var(--min);stroke-width:5.5}
+.hub{fill:var(--ink)}
+.hl line{animation:pulse .8s ease-in-out infinite alternate}
+@keyframes pulse{from{opacity:.35}to{opacity:1}}
+.digital{font:800 36px ui-monospace,Menlo,Consolas,monospace;letter-spacing:2px;height:44px;line-height:44px}
+.digital .a{color:var(--hour)}.digital .c{color:var(--ink)}.digital .z{color:var(--min)}
+.words{font-weight:700;font-size:19px;color:#5b5f77;height:26px}
+.bigico{font-size:64px}
+.bubble{background:#fff;border:2px solid var(--line);border-radius:16px;padding:8px 12px;font-size:19px;text-align:center}
+.dots{display:flex;gap:8px;justify-content:center;margin:6px 0}
+.dots span{width:10px;height:10px;border-radius:50%;background:var(--line)}
+.dots span.cur{background:var(--accent);transform:scale(1.25)}
+.dots span.on{background:var(--good)}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.opt{min-height:54px;border-radius:16px;border:2px solid var(--line);border-bottom:4px solid var(--line);background:#fff;font-weight:800;font-size:23px;padding:6px}
+.opt.long{font-size:17px}
+.opt:active{transform:translateY(2px)}
+.opt.bad{background:#ffe3e3;border-color:var(--bad);color:var(--bad);animation:shake .35s}
+.opt.good{background:#d9f7e6;border-color:var(--good);color:#12804d}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.fb{min-height:26px;margin-top:6px;text-align:center;font-weight:800;font-size:20px}
+.fb.good{color:#12804d;animation:pop .35s}
+.fb.bad{color:var(--bad)}
+@keyframes pop{from{transform:scale(.7)}to{transform:scale(1)}}
+.hint{font-weight:600;font-size:16px;background:#fff8c9;border:2px solid #f3e27a;border-radius:14px;padding:6px 10px;color:var(--ink);text-align:left}
+.res{text-align:center;margin-top:6vh}
+.res .big{font-size:44px;letter-spacing:4px;color:#f5a623;margin:8px 0}
+.tip{text-align:center;color:#6b6f86;font-size:16px;margin:6px 0 0}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function(){
+'use strict';
+
+/* ---------- time helpers (time = minutes on a 12-hour clock, 0..719) ---------- */
+const $=(s,el)=> (el||document).querySelector(s);
+const pad=n=>String(n).padStart(2,'0');
+const norm=t=>((t%720)+720)%720;
+const hh=t=>{const h=Math.floor(norm(t)/60)%12;return h===0?12:h;};
+const mm=t=>norm(t)%60;
+const fmt=t=>hh(t)+':'+pad(mm(t));
+const T=(h,m)=>norm((h%12)*60+m);
+const rnd=n=>Math.floor(Math.random()*n);
+const pick=a=>a[rnd(a.length)];
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=rnd(i+1);const x=a[i];a[i]=a[j];a[j]=x;}return a;};
+const plural=(n,w)=>n+' '+w+(n===1?'':'s');
+function words(t){
+  const h=hh(t),m=mm(t),n=hh(t+60);
+  if(m===0)return h+" o'clock";
+  if(m===30)return 'half past '+h;
+  if(m===15)return 'quarter past '+h;
+  if(m===45)return 'quarter to '+n;
+  if(m<30)return plural(m,'minute')+' past '+h;
+  return plural(60-m,'minute')+' to '+n;
+}
+function digitalHTML(t){return '<span class="a">'+hh(t)+'</span><span class="c">:</span><span class="z">'+pad(mm(t))+'</span>';}
+
+/* ---------- storage ---------- */
+const KEY='clocktime.v1';
+let progress={};
+try{progress=JSON.parse(localStorage.getItem(KEY))||{};}catch(e){progress={};}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(progress));}catch(e){}};
+const starsOf=id=>progress[id]||0;
+
+/* ---------- speech ---------- */
+function speak(html){
+  try{
+    const ss=window.speechSynthesis;
+    if(!ss||typeof SpeechSynthesisUtterance==='undefined')return false;
+    const d=document.createElement('div');d.innerHTML=html.replace(/<br\s*\/?>/gi,'. ');
+    const txt=d.textContent.replace(/→/g,', then ').replace(/−/g,' minus ').replace(/\+/g,' plus ').replace(/×/g,' times ').replace(/=/g,' equals ').replace(/\s+/g,' ');
+    ss.cancel();
+    setTimeout(function(){
+      try{
+        const u=new SpeechSynthesisUtterance(txt);u.rate=.9;
+        const vs=ss.getVoices()||[];
+        const v=vs.find(x=>/^en[-_]GB/i.test(x.lang))||vs.find(x=>/^en/i.test(x.lang));
+        if(v){u.voice=v;u.lang=v.lang;}else u.lang='en-GB';
+        window.__utter=u; /* keep a reference so it is not garbage collected mid-speech */
+        ss.resume();ss.speak(u);
+      }catch(e){}
+    },80);
+    return true;
+  }catch(e){return false;}
+}
+try{if(window.speechSynthesis)speechSynthesis.getVoices();}catch(e){}
+
+/* ---------- the clock ---------- */
+function makeClock(opts){
+  const o=Object.assign({t:0,mn:false,step:5,interactive:false,onChange:null,hl:null},opts||{});
+  const NS='http://www.w3.org/2000/svg';
+  const svg=document.createElementNS(NS,'svg');
+  svg.setAttribute('viewBox','-16 -16 232 232');
+  svg.setAttribute('class','clock'+(o.interactive?' drag':''));
+  svg.setAttribute('role','img');
+  let s='<circle class="face" cx="100" cy="100" r="92"/>';
+  for(let i=0;i<60;i++){
+    const a=i*6*Math.PI/180,r1=i%5?86:80,r2=90;
+    s+='<line class="'+(i%5?'tk':'tkM')+'" x1="'+(100+r1*Math.sin(a))+'" y1="'+(100-r1*Math.cos(a))+'" x2="'+(100+r2*Math.sin(a))+'" y2="'+(100-r2*Math.cos(a))+'"/>';
+  }
+  for(let n=1;n<=12;n++){
+    const a=n*30*Math.PI/180;
+    s+='<text class="num" dy=".35em" x="'+(100+65*Math.sin(a))+'" y="'+(100-65*Math.cos(a))+'">'+n+'</text>';
+  }
+  let ms='';
+  for(let n=1;n<=12;n++){
+    const a=n*30*Math.PI/180;
+    ms+='<text class="mnum" dy=".35em" x="'+(100+105*Math.sin(a))+'" y="'+(100-105*Math.cos(a))+'">'+(n*5)+'</text>';
+  }
+  s+='<g class="mn">'+ms+'</g>';
+  s+='<g class="hand hh"><line x1="100" y1="110" x2="100" y2="58"/></g>';
+  s+='<g class="hand mh"><line x1="100" y1="114" x2="100" y2="22"/></g>';
+  s+='<circle class="hub" cx="100" cy="100" r="7"/>';
+  svg.innerHTML=s;
+  const gH=svg.querySelector('.hh'),gM=svg.querySelector('.mh');
+
+  const api={el:svg,t:norm(o.t),cum:norm(o.t),shown:norm(o.t),raf:0,locked:false};
+  function draw(){
+    gM.setAttribute('transform','rotate('+(api.shown*6)+' 100 100)');
+    gH.setAttribute('transform','rotate('+(api.shown*0.5)+' 100 100)');
+    svg.setAttribute('aria-label','Clock showing '+words(api.t));
+  }
+  api.set=function(t,instant){
+    t=norm(t);
+    let d=t-api.t;
+    if(d>360)d-=720;if(d<-360)d+=720;
+    api.cum+=d;api.t=t;
+    const from=api.shown,to=api.cum;
+    if(api.raf&&typeof cancelAnimationFrame==='function')cancelAnimationFrame(api.raf);
+    if(instant||typeof requestAnimationFrame!=='function'||d===0){api.shown=to;draw();return;}
+    const t0=performance.now(),dur=600;
+    const step=now=>{
+      const p=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-p,3);
+      api.shown=from+(to-from)*e;draw();
+      if(p<1)api.raf=requestAnimationFrame(step);
+    };
+    api.raf=requestAnimationFrame(step);
+  };
+  api.setHl=function(h){gH.classList.toggle('hl',h==='hour');gM.classList.toggle('hl',h==='min');};
+  api.setMn=function(b){svg.classList.toggle('showmn',!!b);};
+  api.setStep=function(n){o.step=n;};
+  let ro=null,onWin=null;
+  api.mount=function(box){
+    box.appendChild(svg);
+    const f=function(){
+      const sz=Math.max(90,Math.min(box.clientWidth,box.clientHeight,340));
+      svg.style.width=sz+'px';svg.style.height=sz+'px';
+    };
+    f();
+    if(typeof ResizeObserver!=='undefined'){ro=new ResizeObserver(f);ro.observe(box);}
+    else{onWin=f;window.addEventListener('resize',f);}
+  };
+  api.destroy=function(){
+    if(api.raf&&typeof cancelAnimationFrame==='function')cancelAnimationFrame(api.raf);
+    if(ro)ro.disconnect();if(onWin)window.removeEventListener('resize',onWin);
+  };
+  api.setMn(o.mn);api.setHl(o.hl);draw();
+
+  if(o.interactive){
+    let dragging=false;
+    const ang=e=>{
+      const r=svg.getBoundingClientRect();
+      const x=e.clientX-(r.left+r.width/2),y=e.clientY-(r.top+r.height/2);
+      let a=Math.atan2(x,-y)*180/Math.PI;if(a<0)a+=360;return a;
+    };
+    const move=e=>{
+      if(api.locked)return;
+      let m=Math.round(ang(e)/6)%60;
+      m=(Math.round(m/o.step)*o.step)%60;
+      let d=m-mm(api.t);
+      if(d>30)d-=60;if(d<-30)d+=60;
+      if(d!==0){api.set(api.t+d,true);if(o.onChange)o.onChange(api.t);}
+    };
+    svg.addEventListener('pointerdown',e=>{dragging=true;try{svg.setPointerCapture(e.pointerId);}catch(x){}move(e);});
+    svg.addEventListener('pointermove',e=>{if(dragging)move(e);});
+    const end=()=>{dragging=false;};
+    svg.addEventListener('pointerup',end);svg.addEventListener('pointercancel',end);
+  }
+  return api;
+}
+
+/* ---------- lessons ---------- */
+const S=(text,t,x)=>Object.assign({text:text,t:t},x||{});
+
+const LEVELS=[];
+
+/* 1 */
+LEVELS.push({id:1,icon:'🕐',title:'Meet the clock',blurb:'Two hands, two jobs',mn:false,
+ slides:[
+  S('This is a <b>clock</b>. It helps us tell the <b>time</b>.',T(10,10)),
+  S('The <b class="h">short blue hand</b> is the <b class="h">hour hand</b>. It tells us the <b>hour</b>.',T(3,0),{hl:'hour'}),
+  S('The <b class="m">long orange hand</b> is the <b class="m">minute hand</b>. It tells us the <b>minutes</b>.',T(3,0),{hl:'min'}),
+  S('The hands go round the same way as the numbers: 1, 2, 3 … We call this <b>clockwise</b>.',[T(12,0),T(1,0),T(2,0),T(3,0),T(4,0)],{dg:true}),
+  S('When the long hand goes all the way round, <b>1 hour</b> has passed.<br><b>1 hour = 60 minutes</b>',[T(3,0),T(3,15),T(3,30),T(3,45),T(4,0)],{dg:true})
+ ],
+ gen:function(){
+  const mk=(prompt,t,hl,opts,ans,hint)=>({kind:'choice',prompt:prompt,t:t,hl:hl,options:shuffle(opts),answer:ans,hint:hint});
+  return shuffle([
+   mk('Which hand is the <b class="h">HOUR</b> hand?',T(10,10),null,['The short blue hand','The long orange hand'],'The short blue hand','The hour hand is the <b class="h">short blue</b> one.'),
+   mk('Which hand is the <b class="m">MINUTE</b> hand?',T(10,10),null,['The short blue hand','The long orange hand'],'The long orange hand','The minute hand is the <b class="m">long orange</b> one.'),
+   mk('How many minutes are in 1 hour?',null,null,['60','12','100','30'],'60','When the long hand goes all the way round, it is 60 minutes.'),
+   mk('Which way do the hands go round?',T(12,0),null,['Same way as 1, 2, 3 …','Backwards: 3, 2, 1 …'],'Same way as 1, 2, 3 …','They follow the numbers: 1, then 2, then 3.'),
+   mk('Which hand moves faster?',T(2,20),null,['The long minute hand','The short hour hand'],'The long minute hand','The long hand goes all the way round in 1 hour. The short hand only moves a little.')
+  ]);
+ }});
+
+/* reading / setting generators */
+function readQ(L,mins){
+  const m=pick(mins),h=1+rnd(12),t=T(h,m),ans=fmt(t);
+  const set={};set[ans]=1;
+  let c=[];
+  if(mins.length<=4){
+    mins.forEach(x=>{if(x!==m)c.push(T(h,x));});
+    c.push(T(h+1,m),T(h-1,m));
+  }else{
+    c.push(T(h,m+5),T(h,m-5),T(h+1,m),T(h-1,m));
+    if(m%5!==0)c.push(T(h,m+1),T(h,m-1));
+    if(m%5===0)c.push(T(m/5||12,h*5));
+  }
+  c=shuffle(c).map(fmt).filter(x=>x!==ans);
+  const opts=[ans];
+  c.forEach(x=>{if(opts.length<4&&opts.indexOf(x)<0)opts.push(x);});
+  let guard=0;
+  while(opts.length<4&&guard++<200){const x=fmt(T(1+rnd(12),pick(mins)));if(opts.indexOf(x)<0)opts.push(x);}
+  let hint;
+  if(m===0)hint='The <b class="m">minute hand</b> points at the 12, so it is 0 minutes. The <b class="h">hour hand</b> points at '+h+'.';
+  else if(m%5===0)hint='The <b class="m">minute hand</b> points at the '+m/5+' → '+m+' minutes (count in 5s). The <b class="h">hour hand</b> has just passed the '+h+'.';
+  else hint='The <b class="m">minute hand</b> passed the '+((m-m%5)/5||12)+' ('+(m-m%5)+' minutes) and then '+(m%5)+' more tiny lines. So '+m+' minutes. The <b class="h">hour hand</b> has just passed the '+h+'.';
+  return {kind:'choice',prompt:'What time does the clock show?',t:t,options:shuffle(opts),answer:ans,hint:hint,meta:{t:t}};
+}
+function setQ(L,mins,step,useWords){
+  let t;do{t=T(1+rnd(12),pick(mins));}while(t===0);
+  const m=mm(t),h=hh(t);
+  const label=useWords?'<b>'+words(t)+'</b> ('+fmt(t)+')':'<b>'+fmt(t)+'</b>';
+  let mh;
+  if(m===0)mh='the 12';else if(m%5===0)mh='the '+m/5;else mh='the '+((m-m%5)/5||12)+' and then '+(m%5)+' tiny lines on';
+  return {kind:'set',target:t,step:step,
+   prompt:'Show '+label+' on the clock.<br><span style="font-size:17px;font-weight:600">Drag the <b class="m">long hand</b>. Use the buttons to change the hour.</span>',
+   hint:'The <b class="h">hour hand</b> should point at the '+h+'. The <b class="m">minute hand</b> should point at '+mh+'.'};
+}
+function readSetGen(L,mins,step,useWords){
+  return function(){return [readQ(L,mins),readQ(L,mins),readQ(L,mins),setQ(L,mins,step,useWords),setQ(L,mins,step,useWords)];};
+}
+const M5=[0,5,10,15,20,25,30,35,40,45,50,55];
+const ANY=[];for(let i=0;i<60;i++)ANY.push(i);
+
+/* 2 */
+LEVELS.push({id:2,icon:'🕒',title:"O'clock",blurb:'The minute hand is on the 12',mn:false,
+ slides:[
+  S("When the long <b class=\"m\">minute hand</b> points straight up at the <b>12</b>, it is an <b>o'clock</b> time.",T(3,0),{hl:'min'}),
+  S("Now look at the short <b class=\"h\">hour hand</b>. It points at the <b>3</b>. So it is <b>3 o'clock</b>.",T(3,0),{hl:'hour',dg:true}),
+  S('We write it with numbers: <b>3:00</b>.<br>Hour first, then two dots, then the minutes. <b>00</b> means no extra minutes.',T(3,0),{dg:true}),
+  S("More o'clock times: <b>6:00</b>, <b>9:00</b>, <b>12:00</b>. The minute hand is always on the 12!",[T(6,0),T(9,0),T(12,0)],{dg:true})
+ ],
+ gen:readSetGen(null,[0],5,true)});
+
+/* 3 */
+LEVELS.push({id:3,icon:'🕟',title:'Half past',blurb:'The minute hand is on the 6',mn:false,
+ slides:[
+  S('Look! The <b class="m">minute hand</b> points at the <b>6</b>. It has gone <b>half way</b> round the clock.',T(4,30),{hl:'min'}),
+  S('Half an hour is <b>30 minutes</b>. So this time is <b>half past 4</b>.',T(4,30),{dg:true}),
+  S('We write it as <b>4:30</b>. The 30 means 30 minutes.',T(4,30),{dg:true}),
+  S('Tricky bit: the <b class="h">hour hand</b> is between the 4 and the 5. It has not got to 5 yet, so the hour is still <b>4</b>.',T(4,30),{hl:'hour',dg:true}),
+  S('More half past times: <b>7:30</b>, <b>11:30</b>, <b>2:30</b>.',[T(7,30),T(11,30),T(2,30)],{dg:true})
+ ],
+ gen:readSetGen(null,[0,30],5,true)});
+
+/* 4 */
+LEVELS.push({id:4,icon:'🕞',title:'Quarter past & quarter to',blurb:'The minute hand is on 3 or 9',mn:false,
+ slides:[
+  S('A <b>quarter</b> is 1 of 4 equal parts. A quarter of an hour is <b>15 minutes</b>. Watch the 4 quarters!',[T(7,0),T(7,15),T(7,30),T(7,45),T(8,0)],{dg:true}),
+  S('<b>Quarter past 7</b>: the minute hand points at the <b>3</b>. That is 15 minutes past 7.<br>We write <b>7:15</b>.',T(7,15),{hl:'min',dg:true}),
+  S('<b>Quarter to 8</b>: the minute hand points at the <b>9</b>. There are 15 minutes to go until 8 o\'clock.<br>It is still the 7 o\'clock hour, so we write <b>7:45</b>.',T(7,45),{hl:'min',dg:true}),
+  S('Remember:<br><b>12</b> → o\'clock (:00) · <b>3</b> → quarter past (:15)<br><b>6</b> → half past (:30) · <b>9</b> → quarter to (:45)',[T(7,0),T(7,15),T(7,30),T(7,45)],{dg:true})
+ ],
+ gen:readSetGen(null,[0,15,30,45],5,true)});
+
+/* 5 */
+LEVELS.push({id:5,icon:'🕔',title:'Counting in 5s',blurb:'Minutes on the clock',mn:true,
+ slides:[
+  S('Every number on the clock is also a <b>minute count</b>. Look at the little orange numbers around the edge!',T(2,0),{mn:true}),
+  S('Count in 5s as the minute hand moves: <b>5, 10, 15, 20, 25, 30</b>!',[T(2,0),T(2,5),T(2,10),T(2,15),T(2,20),T(2,25),T(2,30)],{mn:true,dg:true}),
+  S('Keep going: <b>35, 40, 45, 50, 55</b> … and 60 is a whole hour!',[T(2,30),T(2,35),T(2,40),T(2,45),T(2,50),T(2,55),T(3,0)],{mn:true,dg:true}),
+  S('The minute hand points at the 4. <b>4 × 5 = 20</b> minutes. So this is <b>6:20</b>.',T(6,20),{mn:true,hl:'min',dg:true}),
+  S('Left side of the clock? We can also say "<b>minutes to</b>" the next hour. <b>6:50</b> is "10 to 7". But we still write 6:50!',T(6,50),{mn:true,dg:true})
+ ],
+ gen:readSetGen(null,M5,5,false)});
+
+/* 6 */
+LEVELS.push({id:6,icon:'🕖',title:'Any minute',blurb:'Count the tiny lines',mn:true,
+ slides:[
+  S('Between the numbers there are <b>tiny lines</b>. Each tiny line is <b>1 minute</b>. Watch: 1, 2, 3, 4, 5!',[T(9,0),T(9,1),T(9,2),T(9,3),T(9,4),T(9,5)],{mn:true,dg:true}),
+  S('To read any minute: <b>1.</b> Find the last number the minute hand passed. <b>2.</b> Count the tiny lines after it.<br>It passed the 4 (that is 20), plus 3 tiny lines: <b>23</b>.',T(2,23),{mn:true,hl:'min',dg:true}),
+  S('Now the <b class="h">hour hand</b>. It is just past the 2, so the hour is <b>2</b>. The time is <b>2:23</b>.',T(2,23),{mn:true,hl:'hour',dg:true}),
+  S('Minutes always have <b>two digits</b>. 7 minutes past 2 is written <b>2:07</b>.',T(2,7),{mn:true,dg:true})
+ ],
+ gen:readSetGen(null,ANY,1,false)});
+
+/* ---------- adding and taking away time ---------- */
+function durText(dh,dm){
+  const p=[];if(dh)p.push(plural(dh,'hour'));if(dm)p.push(plural(dm,'minute'));return p.join(' ');
+}
+function minuteHint(start,sign,dm){
+  const end=norm(start+sign*dm),m=mm(start);
+  if(sign>0){
+    if(m+dm>=60){
+      const toNext=60-m;
+      return 'Jump to the next o\'clock first: '+fmt(start)+' → '+fmt(start+toNext)+' is '+plural(toNext,'minute')+'. You still have '+plural(dm-toNext,'minute')+' to add → <b>'+fmt(end)+'</b>.';
+    }
+    const a=[fmt(start)];for(let k=5;k<=dm;k+=5)a.push(fmt(start+k));
+    return 'Count on in 5s: '+a.join(' → ');
+  }
+  if(m-dm<0){
+    if(m===0)return 'Start at the top of the hour ('+fmt(start)+') and go back '+plural(dm,'minute')+' → <b>'+fmt(end)+'</b>.';
+    return 'Go back to the o\'clock first: '+fmt(start)+' → '+fmt(start-m)+' is '+plural(m,'minute')+'. You still have '+plural(dm-m,'minute')+' to go back → <b>'+fmt(end)+'</b>.';
+  }
+  const a=[fmt(start)];for(let k=5;k<=dm;k+=5)a.push(fmt(start-k));
+  return 'Count back in 5s: '+a.join(' → ');
+}
+function arithQ(cfg){
+  let start,sign,dh,dm,crosses,guard=0;
+  do{
+    start=T(1+rnd(12),pick(cfg.startMins));
+    sign=pick(cfg.dir);
+    dh=pick(cfg.hours);dm=pick(cfg.mins);
+    crosses=sign>0?mm(start)+dm>=60:mm(start)-dm<0;
+    if(dm===0)crosses=false;
+    guard++;
+  }while(guard<500&&((dh===0&&dm===0)||(cfg.cross===true&&!crosses)||(cfg.cross===false&&crosses)));
+  const delta=sign*(dh*60+dm),end=norm(start+delta),ans=fmt(end);
+  const wrongDir=norm(start-delta);
+  let c=[T(0,0)+wrongDir];
+  if(dm===0){c.push(end+60,end-60,end+120,end-120);}
+  else{
+    c.push(end+5,end-5,end+10,end-10,end+60,end-60);
+    if(crosses)c.push(T(hh(start),mm(end)),T(hh(start),mm(end)));
+  }
+  c=shuffle(c).map(fmt).filter(x=>x!==ans);
+  const opts=[ans];
+  c.forEach(x=>{if(opts.length<4&&opts.indexOf(x)<0)opts.push(x);});
+  let g=0;while(opts.length<4&&g++<200){const x=fmt(end+60*(1+rnd(5))*(rnd(2)?1:-1));if(opts.indexOf(x)<0)opts.push(x);}
+  let hint;
+  if(dm===0){
+    const a=[fmt(start)];let cur=start;for(let k=0;k<dh;k++){cur+=sign*60;a.push(fmt(cur));}
+    hint='Only the <b class="h">hour hand</b> moves. Count '+plural(dh,'hour')+(sign>0?' forward: ':' back: ')+a.join(' → ');
+  }else if(dh===0){
+    hint=minuteHint(start,sign,dm);
+  }else{
+    const mid=start+sign*dh*60;
+    hint='Hours first: '+fmt(start)+' → '+fmt(mid)+'.<br>Now the minutes: '+minuteHint(mid,sign,dm);
+  }
+  const q='It is <b>'+fmt(start)+'</b>. What time is it <b>'+durText(dh,dm)+'</b> '+(sign>0?'later':'earlier')+'?';
+  return {kind:'choice',prompt:q,t:start,options:shuffle(opts),answer:ans,hint:hint,meta:{start:start,sign:sign,dh:dh,dm:dm,end:end,crosses:crosses}};
+}
+const SM4=[0,15,30,45];
+function arithGen(cfg){return function(){const a=[];for(let i=0;i<5;i++)a.push(arithQ(cfg));return a;};}
+
+/* 7 */
+LEVELS.push({id:7,icon:'⏩',title:'Hours later & earlier',blurb:'Only the hour hand moves',mn:false,
+ slides:[
+  S('Adding hours is the easy one! Only the <b class="h">hour hand</b> moves. The minutes stay the same.',T(3,0),{hl:'hour',dg:true}),
+  S('<b>2 hours later</b> than 3:00: count 2 numbers on. 3 → 4 → 5.<br>It is <b>5:00</b>.',[T(3,0),T(4,0),T(5,0)],{dg:true}),
+  S('Going back? Count backwards. <b>2 hours earlier</b> than 3:00 is <b>1:00</b>.',[T(3,0),T(2,0),T(1,0)],{dg:true}),
+  S('The minutes do not change. <b>1 hour later</b> than 4:30 is <b>5:30</b>.',[T(4,30),T(5,30)],{dg:true}),
+  S('After 12 we start again at 1. <b>2 hours later</b> than 11:00 is <b>1:00</b>.',[T(11,0),T(12,0),T(1,0)],{dg:true})
+ ],
+ gen:arithGen({startMins:SM4,hours:[1,2,3,4],mins:[0],dir:[1,-1]})});
+
+/* 8 */
+LEVELS.push({id:8,icon:'➕',title:'Minutes later & earlier',blurb:'Jump in 5s',mn:true,
+ slides:[
+  S('Now minutes. Each number is 5 minutes. To add <b>10 minutes</b>, move the <b class="m">minute hand</b> on <b>2 numbers</b>.',[T(2,10),T(2,15),T(2,20)],{mn:true,hl:'min',dg:true}),
+  S('<b>20 minutes later</b> than 2:10. Count on in 5s: 2:15, 2:20, 2:25, 2:30.<br>The answer is <b>2:30</b>.',[T(2,10),T(2,15),T(2,20),T(2,25),T(2,30)],{mn:true,dg:true}),
+  S('Going back? Move the minute hand backwards. <b>15 minutes earlier</b> than 2:40 is <b>2:25</b>.',[T(2,40),T(2,35),T(2,30),T(2,25)],{mn:true,dg:true}),
+  S('The hour stays the same, as long as the minute hand does not pass the 12.',T(2,25),{mn:true,hl:'hour',dg:true})
+ ],
+ gen:arithGen({startMins:M5,hours:[0],mins:[5,10,15,20,25,30],dir:[1,-1],cross:false})});
+
+/* 9 */
+LEVELS.push({id:9,icon:'🔁',title:'Over the hour',blurb:'When the minutes pass 12',mn:true,
+ slides:[
+  S('What if the minute hand goes past the <b>12</b>? Then it is a <b>new hour</b>! Watch the hour change from 3 to 4.',[T(3,40),T(3,50),T(4,0),T(4,10)],{mn:true,dg:true}),
+  S('Trick: jump to the <b>next o\'clock</b> first.<br><b>3:40 + 30 minutes</b>: 3:40 → 4:00 is <b>20</b> minutes. <b>10</b> left (30 − 20). So 4:00 → <b>4:10</b>.',[T(3,40),T(4,0),T(4,10)],{mn:true,dg:true}),
+  S('Going back is the same trick.<br><b>4:10 − 30 minutes</b>: back to 4:00 is <b>10</b> minutes. <b>20</b> left. So 4:00 → <b>3:40</b>.',[T(4,10),T(4,0),T(3,40)],{mn:true,dg:true}),
+  S('The o\'clock is your stepping stone! Jump to it, then count the rest.',T(5,0),{mn:true,hl:'min',dg:true})
+ ],
+ gen:arithGen({startMins:M5,hours:[0],mins:[10,15,20,25,30,35,40,45],dir:[1,-1],cross:true})});
+
+/* 10 */
+LEVELS.push({id:10,icon:'🏆',title:'Hours and minutes',blurb:'Do the hours first',mn:true,
+ slides:[
+  S('Hours <b>and</b> minutes together? Do the <b class="h">hours first</b>, then the <b class="m">minutes</b>.',T(2,15),{mn:true,dg:true}),
+  S('<b>2:15 + 1 hour 30 minutes</b><br>+1 hour → 3:15. Then +30 minutes → <b>3:45</b>.',[T(2,15),T(3,15),T(3,45)],{mn:true,dg:true}),
+  S('Taking away works the same.<br><b>5:45 − 2 hours 15 minutes</b><br>−2 hours → 3:45. Then −15 minutes → <b>3:30</b>.',[T(5,45),T(4,45),T(3,45),T(3,30)],{mn:true,dg:true}),
+  S('You are a clock expert! Time to practise.',T(12,0),{mn:true,dg:true})
+ ],
+ gen:arithGen({startMins:SM4,hours:[1,2,3],mins:[15,30,45],dir:[1,-1]})});
+
+/* ---------- screens ---------- */
+const app=document.getElementById('app');
+let live=null,timers=[];
+const clearTimers=()=>{timers.forEach(clearTimeout);timers=[];};
+function view(fn){
+  clearTimers();
+  try{if('speechSynthesis' in window)speechSynthesis.cancel();}catch(e){}
+  if(live){live.destroy();live=null;}
+  app.innerHTML='';
+  try{window.scrollTo(0,0);}catch(e){}
+  fn();
+}
+const starStr=n=>'★'.repeat(n)+'☆'.repeat(5-n);
+const PRAISE=['🌟 Brilliant!','🎉 Well done!','👏 Great job!','✅ Yes, that is right!','🚀 Super!','🏅 Fantastic!'];
+
+function home(){view(function(){
+  const total=LEVELS.reduce((s,l)=>s+starsOf(l.id),0);
+  app.innerHTML='<header class="top"><h1>🕒 Clock Time</h1><div class="pill">⭐ '+total+'</div></header>'+
+   '<h2>Telling the time</h2><div class="grid" id="g1"></div>'+
+   '<h2>Adding &amp; taking away time</h2><div class="grid" id="g2"></div>'+
+   '<h2>Just for fun</h2><div class="grid" id="g3"></div>';
+  const card=(L,grid)=>{
+    const b=document.createElement('button');b.className='card';
+    b.innerHTML='<span class="num">'+L.id+'</span><span class="ttl">'+L.icon+' '+L.title+'</span><span class="stars" aria-label="'+starsOf(L.id)+' of 5 stars">'+starStr(starsOf(L.id))+'</span>';
+    b.onclick=function(){learn(L,0);};
+    $(grid).appendChild(b);
+  };
+  LEVELS.forEach(L=>card(L,L.id<=6?'#g1':'#g2'));
+  const p=document.createElement('button');p.className='card';
+  p.innerHTML='<span class="num fun">🎮</span><span class="ttl">Playground</span>';
+  p.onclick=playground;$('#g3').appendChild(p);
+});}
+
+function learn(L,start){view(function(){
+  let i=start||0;
+  app.innerHTML='<header class="top"><button class="back" id="bk">← Home</button><div class="pill">'+L.icon+' '+L.id+'. '+L.title+'</div></header>'+
+   '<div class="stage"><div class="cw" id="cb"></div><div class="digital" id="dg"></div></div>'+
+   '<div class="bubble" id="tx"></div><div class="dots" id="dots"></div>'+
+   '<div class="row"><button class="btn ghost sq" id="say" aria-label="Read to me">🔊 Read</button><button class="btn ghost sq" id="rp" aria-label="Watch again">↻</button><button class="btn ghost sq" id="pv">◀</button><button class="btn" id="nx">Next ▶</button></div>';
+  $('#bk').onclick=home;
+  const first=[].concat(L.slides[0].t)[0];
+  const clock=makeClock({t:first,mn:L.slides[0].mn});
+  live=clock;clock.mount($('#cb'));
+  function setDg(t,on){$('#dg').innerHTML=on?digitalHTML(t):'';}
+  function play(){
+    clearTimers();
+    const S0=L.slides[i],seq=[].concat(S0.t);
+    seq.forEach(function(t,k){
+      const f=function(){clock.set(t);setDg(t,S0.dg);};
+      if(k===0)f();else timers.push(setTimeout(f,k*1000));
+    });
+  }
+  function show(){
+    const S0=L.slides[i];
+    $('#tx').innerHTML=S0.text;
+    clock.setHl(S0.hl||null);clock.setMn(!!S0.mn);
+    $('#dots').innerHTML=L.slides.map(function(_,k){return '<span class="'+(k===i?'cur':k<i?'on':'')+'"></span>';}).join('');
+    $('#pv').style.visibility=i===0?'hidden':'visible';
+    $('#rp').style.visibility=[].concat(S0.t).length>1?'visible':'hidden';
+    $('#nx').textContent=i===L.slides.length-1?"Let's practise! ✏️":'Next ▶';
+    play();
+  }
+  $('#nx').onclick=function(){if(i<L.slides.length-1){i++;show();}else practice(L);};
+  $('#pv').onclick=function(){if(i>0){i--;show();}};
+  $('#say').onclick=function(){
+    const ok=speak(L.slides[i].text);
+    if(!ok){const b=this;b.textContent='🔇 No sound';setTimeout(function(){b.textContent='🔊 Read';},2500);}
+  };
+  $('#rp').onclick=function(){
+    const seq=[].concat(L.slides[i].t);clock.set(seq[0],true);play();
+  };
+  show();
+});}
+
+function practice(L){
+  const qs=L.gen();let i=0,stars=0;
+  window.ClockTime&&(window.ClockTime.qs=qs);
+  function ask(){view(function(){
+    const q=qs[i];let tries=0,hinted=false;
+    if(window.ClockTime)window.ClockTime.cur=q;
+    app.innerHTML='<header class="top"><button class="back" id="bk">← Home</button><div class="pill">'+L.icon+' '+L.title+'</div></header>'+
+     '<div class="dots">'+qs.map(function(_,k){return '<span class="'+(k<i?'on':k===i?'cur':'')+'"></span>';}).join('')+'</div>'+
+     '<div class="stage"><div class="cw" id="stage"></div></div><div class="bubble" id="pr">'+q.prompt+'</div>'+
+     '<div id="ans" class="opts"></div><div id="fb" class="fb" aria-live="polite"></div><div class="row wrap" id="act"></div>';
+    $('#bk').onclick=home;
+    const stage=$('#stage'),fb=$('#fb'),act=$('#act');
+    let clock=null;
+    if(q.kind==='set')clock=makeClock({t:0,mn:L.mn,step:q.step,interactive:true});
+    else if(q.t!=null)clock=makeClock({t:q.t,mn:L.mn,hl:q.hl});
+    if(clock){live=clock;clock.mount(stage);}
+    else stage.innerHTML='<div class="bigico">⏱️</div>';
+    const last=i===qs.length-1;
+    const showHint=function(){hinted=true;fb.className='fb';fb.innerHTML='<div class="hint">💡 '+q.hint+'</div>';};
+    const addNext=function(){
+      act.innerHTML='<button class="btn" id="nx">'+(last?'Finish 🎉':'Next ▶')+'</button>';
+      $('#nx').onclick=function(){i++;if(i<qs.length)ask();else results(L,stars);};
+    };
+    const right=function(){
+      if(tries===0&&!hinted)stars++;
+      fb.className='fb good';fb.textContent=pick(PRAISE);
+      if(clock)clock.locked=true;
+      addNext();
+    };
+    const wrong=function(){
+      tries++;fb.className='fb bad';fb.textContent='Not quite – have another go!';
+      if(tries>=2)showHint();
+    };
+    if(q.kind==='choice'){
+      q.options.forEach(function(text){
+        const b=document.createElement('button');b.className='opt'+(text.length>10?' long':'');b.textContent=text;
+        b.onclick=function(){
+          if(text===q.answer){
+            b.classList.add('good');
+            [].forEach.call($('#ans').children,function(x){x.disabled=true;});
+            right();
+          }else{b.classList.add('bad');b.disabled=true;wrong();}
+        };
+        $('#ans').appendChild(b);
+      });
+      act.innerHTML='<button class="btn ghost" id="hn">💡 Hint</button>';
+      $('#hn').onclick=showHint;
+    }else{
+      act.innerHTML='<button class="btn ghost" id="hm">Hour −</button><button class="btn ghost" id="hp">Hour +</button><button class="btn ghost sq" id="hn">💡</button>'+
+        '<button class="btn" id="ck" style="flex-basis:100%">✓ Check</button>';
+      $('#hm').onclick=function(){if(!clock.locked)clock.set(clock.t-60);};
+      $('#hp').onclick=function(){if(!clock.locked)clock.set(clock.t+60);};
+      $('#hn').onclick=showHint;
+      $('#ck').onclick=function(){if(norm(clock.t)===norm(q.target))right();else wrong();};
+    }
+  });}
+  ask();
+}
+
+function results(L,stars){view(function(){
+  progress[L.id]=Math.max(starsOf(L.id),stars);save();
+  const msg=stars===5?'Perfect! 🎉':stars>=3?'Great work!':'Good try! Practice makes perfect.';
+  const next=LEVELS.filter(function(x){return x.id===L.id+1;})[0];
+  app.innerHTML='<div class="res"><h2>'+msg+'</h2><div class="big">'+starStr(stars)+'</div>'+
+   '<p>You got <b>'+stars+' out of 5</b> stars.<br><span style="font-size:16px;color:#6b6f86">(A star = right first time, with no hint.)</span></p></div>'+
+   '<div class="row wrap"><button class="btn ghost" id="ag" style="flex-basis:100%">↻ Try again</button>'+
+   (next?'<button class="btn" id="nl" style="flex-basis:100%">Next step ▶</button>':'')+
+   '<button class="btn ghost" id="hm" style="flex-basis:100%">Home</button></div>';
+  $('#ag').onclick=function(){practice(L);};
+  if(next)$('#nl').onclick=function(){learn(next,0);};
+  $('#hm').onclick=home;
+});}
+
+function playground(){view(function(){
+  let step=5,mn=true;
+  app.innerHTML='<header class="top"><button class="back" id="bk">← Home</button><div class="pill">🎮 Playground</div></header>'+
+   '<div class="stage"><div class="cw" id="cb"></div><div class="digital" id="dg"></div><div class="words" id="wd"></div></div>'+
+   '<div class="row wrap"><button class="btn ghost" id="hm">Hour −</button><button class="btn ghost" id="hp">Hour +</button></div>'+
+   '<div class="row wrap"><button class="btn ghost" id="sn">Snap: 5 min</button><button class="btn ghost" id="mn">Minute numbers: on</button><button class="btn ghost" id="say">🔊</button></div>'+
+   '<p class="tip">Drag the long orange hand round the clock!</p>';
+  $('#bk').onclick=home;
+  const upd=function(t){$('#dg').innerHTML=digitalHTML(t);$('#wd').textContent=words(t);};
+  const clock=makeClock({t:T(3,0),mn:true,step:step,interactive:true,onChange:upd});
+  live=clock;clock.mount($('#cb'));upd(clock.t);
+  $('#hm').onclick=function(){clock.set(clock.t-60);upd(clock.t);};
+  $('#hp').onclick=function(){clock.set(clock.t+60);upd(clock.t);};
+  $('#sn').onclick=function(){step=step===5?1:5;clock.setStep(step);this.textContent='Snap: '+step+' min';};
+  $('#mn').onclick=function(){mn=!mn;clock.setMn(mn);this.textContent='Minute numbers: '+(mn?'on':'off');};
+  $('#say').onclick=function(){speak(words(clock.t));};
+});}
+
+window.ClockTime={LEVELS:LEVELS,fmt:fmt,T:T,norm:norm,words:words,home:home,cur:null,qs:null};
+home();
+})();
+</script>
+</body>
+</html>

@@ -156,6 +156,18 @@ function speak(html){
 }
 try{if(window.speechSynthesis){speechSynthesis.getVoices();if(speechSynthesis.addEventListener)speechSynthesis.addEventListener('voiceschanged',function(){});}}catch(e){}
 
+/* ---------- recorded narration (audio/L<level>S<slide>.mp3), browser voice as fallback ---------- */
+const narr=new Audio();
+function stopNarr(){try{narr.pause();}catch(e){}}
+function narrate(key,fallbackHtml){
+  if(!narr.paused&&!narr.ended&&narr.src&&narr.src.indexOf(key)>=0){stopNarr();return;}
+  let fell=false;
+  const fb=function(){if(fell)return;fell=true;speak(fallbackHtml);};
+  narr.onerror=fb;
+  narr.src='audio/'+key+'.mp3';
+  try{const pr=narr.play();if(pr&&pr.catch)pr.catch(fb);}catch(e){fb();}
+}
+
 /* ---------- the clock ---------- */
 function makeClock(opts){
   const o=Object.assign({t:0,mn:false,step:5,interactive:false,onChange:null,hl:null},opts||{});
@@ -472,7 +484,7 @@ const app=document.getElementById('app');
 let live=null,timers=[];
 const clearTimers=()=>{timers.forEach(clearTimeout);timers=[];};
 function view(fn){
-  clearTimers();
+  clearTimers();stopNarr();
   try{if('speechSynthesis' in window)speechSynthesis.cancel();}catch(e){}
   if(live){live.destroy();live=null;}
   app.innerHTML='';
@@ -528,6 +540,7 @@ function learn(L,start){view(function(){
     });
   }
   function show(){
+    stopNarr();
     const S0=L.slides[i];
     $('#tx').innerHTML=S0.text;
     clock.setHl(S0.hl||null);clock.setMn(!!S0.mn);
@@ -539,10 +552,7 @@ function learn(L,start){view(function(){
   }
   $('#nx').onclick=function(){if(i<L.slides.length-1){i++;show();}else practice(L);};
   $('#pv').onclick=function(){if(i>0){i--;show();}};
-  $('#say').onclick=function(){
-    const ok=speak(L.slides[i].text);
-    if(!ok){const b=this;b.textContent='🔇 No sound';setTimeout(function(){b.textContent='🔊 Read';},2500);}
-  };
+  $('#say').onclick=function(){narrate('L'+L.id+'S'+i,L.slides[i].text);};
   $('#rp').onclick=function(){
     const seq=[].concat(L.slides[i].t);clock.set(seq[0],true);play();
   };

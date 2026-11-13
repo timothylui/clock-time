@@ -74,6 +74,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .fb.bad{color:var(--bad)}
 @keyframes pop{from{transform:scale(.7)}to{transform:scale(1)}}
 .hint{font-weight:600;font-size:16px;background:#fff8c9;border:2px solid #f3e27a;border-radius:14px;padding:6px 10px;color:var(--ink);text-align:left}
+@media(max-height:600px){.card{min-height:46px}.card .num{width:26px;height:26px}h2{margin:5px 0 3px}}
 .res{text-align:center;margin-top:6vh}
 .res .big{font-size:44px;letter-spacing:4px;color:#f5a623;margin:8px 0}
 .tip{text-align:center;color:#6b6f86;font-size:16px;margin:6px 0 0}
@@ -116,27 +117,44 @@ const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(progress));}catch(e)
 const starsOf=id=>progress[id]||0;
 
 /* ---------- speech ---------- */
+const VKEY='clocktime.voice';
+function voiceScore(v){
+  const n=v.name;let sc=0;
+  if(/^en[-_]GB/i.test(v.lang))sc+=3;else if(/^en[-_](AU|IE|ZA|NZ)/i.test(v.lang))sc+=1;
+  if(/premium|enhanced|natural|neural|siri/i.test(n))sc+=6;
+  if(/google/i.test(n))sc+=3;
+  if(/daniel|serena|kate|samantha|karen|moira|tessa|libby|sonia|ryan|aria|jenny|martha|oliver|stephanie/i.test(n))sc+=4;
+  if(/espeak|fred|albert|bad news|bahh|bells|boing|bubbles|cellos|deranged|good news|hysterical|junior|organ|ralph|trinoids|whisper|zarvox|superstar|jester/i.test(n))sc-=10;
+  return sc;
+}
+function englishVoices(){
+  try{
+    return (speechSynthesis.getVoices()||[]).filter(function(v){return /^en/i.test(v.lang);})
+      .sort(function(a,b){return voiceScore(b)-voiceScore(a);});
+  }catch(e){return [];}
+}
+function chosenVoice(){
+  const vs=englishVoices();let saved=null;
+  try{saved=localStorage.getItem(VKEY);}catch(e){}
+  return vs.find(function(v){return v.name===saved;})||vs[0]||null;
+}
 function speak(html){
   try{
     const ss=window.speechSynthesis;
     if(!ss||typeof SpeechSynthesisUtterance==='undefined')return false;
     const d=document.createElement('div');d.innerHTML=html.replace(/<br\s*\/?>/gi,'. ');
     const txt=d.textContent.replace(/→/g,', then ').replace(/−/g,' minus ').replace(/\+/g,' plus ').replace(/×/g,' times ').replace(/=/g,' equals ').replace(/\s+/g,' ');
-    ss.cancel();
-    setTimeout(function(){
-      try{
-        const u=new SpeechSynthesisUtterance(txt);u.rate=.9;
-        const vs=ss.getVoices()||[];
-        const v=vs.find(x=>/^en[-_]GB/i.test(x.lang))||vs.find(x=>/^en/i.test(x.lang));
-        if(v){u.voice=v;u.lang=v.lang;}else u.lang='en-GB';
-        window.__utter=u; /* keep a reference so it is not garbage collected mid-speech */
-        ss.resume();ss.speak(u);
-      }catch(e){}
-    },80);
+    /* Must run synchronously inside the tap: iPhone Safari ignores speech started after a delay. */
+    if(ss.speaking||ss.pending)ss.cancel();
+    const u=new SpeechSynthesisUtterance(txt);u.rate=.85;u.pitch=1.05;
+    const v=chosenVoice();
+    if(v){u.voice=v;u.lang=v.lang;}else u.lang='en-GB';
+    window.__utter=u; /* keep a reference so it is not garbage collected mid-speech */
+    ss.speak(u);
     return true;
   }catch(e){return false;}
 }
-try{if(window.speechSynthesis)speechSynthesis.getVoices();}catch(e){}
+try{if(window.speechSynthesis){speechSynthesis.getVoices();if(speechSynthesis.addEventListener)speechSynthesis.addEventListener('voiceschanged',function(){});}}catch(e){}
 
 /* ---------- the clock ---------- */
 function makeClock(opts){
@@ -466,7 +484,7 @@ const PRAISE=['🌟 Brilliant!','🎉 Well done!','👏 Great job!','✅ Yes, th
 
 function home(){view(function(){
   const total=LEVELS.reduce((s,l)=>s+starsOf(l.id),0);
-  app.innerHTML='<header class="top"><h1>🕒 Clock Time</h1><div class="pill">⭐ '+total+'</div></header>'+
+  app.innerHTML='<header class="top"><h1>🕒 Clock Time</h1><div style="display:flex;gap:6px;align-items:center"><button class="pill" id="vc" aria-label="Change voice">🗣 Voice</button><div class="pill">⭐ '+total+'</div></div></header>'+
    '<h2>Telling the time</h2><div class="grid" id="g1"></div>'+
    '<h2>Adding &amp; taking away time</h2><div class="grid" id="g2"></div>'+
    '<h2>Just for fun</h2><div class="grid" id="g3"></div>';
@@ -477,6 +495,14 @@ function home(){view(function(){
     $(grid).appendChild(b);
   };
   LEVELS.forEach(L=>card(L,L.id<=6?'#g1':'#g2'));
+  $('#vc').onclick=function(){
+    const b=this,vs=englishVoices();
+    if(!vs.length){b.textContent='No voices';setTimeout(function(){b.textContent='🗣 Voice';},2000);return;}
+    const cur=chosenVoice();let k=vs.indexOf(cur);k=(k+1)%vs.length;
+    try{localStorage.setItem(VKEY,vs[k].name);}catch(e){}
+    speak("Hello! It's half past three.");
+    b.textContent='🗣 '+vs[k].name.replace(/\(.*?\)|Microsoft|Google|English/g,'').trim().slice(0,12)+' '+(k+1)+'/'+vs.length;
+  };
   const p=document.createElement('button');p.className='card';
   p.innerHTML='<span class="num fun">🎮</span><span class="ttl">Playground</span>';
   p.onclick=playground;$('#g3').appendChild(p);
